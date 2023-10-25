@@ -26,7 +26,7 @@ void* consumer(void* arg) {
         sem_post(mutex); // Exit critical section
         sem_post(empty); // Signal that a slot is empty
 
-        sleep(1);
+        sleep(2);
     }
 
     return NULL;
