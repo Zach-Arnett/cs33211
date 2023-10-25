@@ -1,4 +1,8 @@
+// consumer.c
+//
 // Zach Arnett
+// Fall 2023
+//
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,18 +29,19 @@ SharedData *shared_data;
 
 void *consumer_thread(void *arg) {
     while (1) {
-        sem_wait(full);
-        sem_wait(mutex);
+        sem_wait(full);     // Wait for a filled slot
+        sem_wait(mutex);    // Acquire the lock
 
         // Consume item from table
         int item = shared_data->items[shared_data->out];
         printf("Consumed item %d\n", item);
         shared_data->out = (shared_data->out + 1) % BUFFER_SIZE;
 
-        sem_post(mutex);
-        sem_post(empty);
+        sem_post(mutex);    // Release the lock
+        sem_post(empty);    // Notify that a slot is empty
 
-        sleep(rand() % 4); // Random Wait Time
+        // Random wait time
+        usleep(rand() % 2000000);
     }
 
     return NULL;
@@ -57,7 +62,7 @@ int main() {
     // Create consumer thread
     pthread_create(&consumer_tid, NULL, consumer_thread, NULL);
 
-    // Wait for threads to finish (you may need to handle this differently depending on your application)
+    // Wait for threads to finish
     pthread_join(consumer_tid, NULL);
 
     return 0;

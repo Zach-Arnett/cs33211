@@ -1,4 +1,8 @@
+// producer.c
+//
 // Zach Arnett
+// Fall 2023
+//
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,8 +31,10 @@ void *producer_thread(void *arg) {
     int item = 1;
 
     while (1) {
-        sem_wait(empty);
-        sem_wait(mutex);
+
+
+        sem_wait(empty);    // Wait for an empty slot
+        sem_wait(mutex);    // Acquire the lock
 
         // Produce item and put on table
         shared_data->items[shared_data->in] = item;
@@ -36,17 +42,19 @@ void *producer_thread(void *arg) {
         item++;
         shared_data->in = (shared_data->in + 1) % BUFFER_SIZE;
 
-        sem_post(mutex);
-        sem_post(full);
+        sem_post(mutex);    // Release the lock
+        sem_post(full);     // Notify that a slot is filled
 
-        sleep(rand() % 3); // Random Wait Time
+        // Random wait time
+        usleep(rand() % 1000000); 
+        usleep(rand() % 1000000); 
     }
 
     return NULL;
 }
 
 int main() {
-    // Clean up
+    // Clean up possible leftover threads
     sem_unlink("/empty_sem");
     sem_unlink("/full_sem");
     sem_unlink("/mutex_sem");
@@ -67,7 +75,7 @@ int main() {
     // Create producer thread
     pthread_create(&producer_tid, NULL, producer_thread, NULL);
 
-    // Wait for threads to finish (you may need to handle this differently depending on your application)
+    // Wait for threads to finish
     pthread_join(producer_tid, NULL);
 
     // Clean up
