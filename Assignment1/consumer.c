@@ -2,49 +2,63 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <unistd.h>
 
-sem_t *empty;
-sem_t *full;
-sem_t *mutex;
+#define BUFFER_SIZE 2
 
-int *table;
+// Define shared memory structure
+typedef struct {
+    int items[BUFFER_SIZE];
+    int in;
+    int out;
+} SharedData;
 
-void *consumer(void *arg) {
-    int item;
+// Define semaphores
+sem_t *empty, *full, *mutex;
 
+int shm_fd;
+SharedData *shared_data;
+
+void *consumer_thread(void *arg) {
     while (1) {
         sem_wait(full);
         sem_wait(mutex);
 
-        item = table[*table - 1];
-        *table -= 1;
-
-        printf("Consuming item %d\n", item);
+        // Consume item from table
+        int item = shared_data->items[shared_data->out];
+        printf("Consumed item %d\n", item);
+        shared_data->out = (shared_data->out + 1) % BUFFER_SIZE;
 
         sem_post(mutex);
         sem_post(empty);
 
-        sleep(2);
+        sleep(rand() % 4); // Random Wait Time
     }
+
+    return NULL;
 }
 
 int main() {
-    // Initialize shared memory for table
-    int fd = shm_open("/table_memory", O_RDWR, 0666);
-    table = mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    // Create and initialize semaphores
+    empty = sem_open("/empty_sem", O_CREAT, 0666, BUFFER_SIZE);
+    full = sem_open("/full_sem", O_CREAT, 0666, 0);
+    mutex = sem_open("/mutex_sem", O_CREAT, 0666, 1);
 
-    // Initialize semaphores
-    empty = sem_open("/empty_sem", O_RDWR);
-    full = sem_open("/full_sem", O_RDWR);
-    mutex = sem_open("/mutex_sem", O_RDWR);
+    // Create shared memory segment
+    shm_fd = shm_open("/shared_mem", O_RDWR, 0666);
+    shared_data = (SharedData *)mmap(NULL, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
-    pthread_t consumer_thread;
-    pthread_create(&consumer_thread, NULL, consumer, NULL);
+    pthread_t consumer_tid;
 
-    pthread_exit(NULL);
+    // Create consumer thread
+    pthread_create(&consumer_tid, NULL, consumer_thread, NULL);
+
+    // Wait for threads to finish (you may need to handle this differently depending on your application)
+    pthread_join(consumer_tid, NULL);
+
+    return 0;
 }

@@ -2,53 +2,79 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <unistd.h>
 
-#define TABLE_SIZE 2
+#define BUFFER_SIZE 2
 
-sem_t *empty;
-sem_t *full;
-sem_t *mutex;
+// Define shared memory structure
+typedef struct {
+    int items[BUFFER_SIZE];
+    int in;
+    int out;
+} SharedData;
 
-int *table;
+// Define semaphores
+sem_t *empty, *full, *mutex;
 
-void *producer(void *arg) {
+int shm_fd;
+SharedData *shared_data;
+
+void *producer_thread(void *arg) {
     int item = 1;
 
     while (1) {
         sem_wait(empty);
         sem_wait(mutex);
 
-        printf("Producing item %d\n", item);
-        table[*table] = item;
-        *table += 1;
-        
+        // Produce item and put on table
+        shared_data->items[shared_data->in] = item;
+        printf("Produced item %d\n", item);
         item++;
+        shared_data->in = (shared_data->in + 1) % BUFFER_SIZE;
 
         sem_post(mutex);
         sem_post(full);
 
-        sleep(1);
+        sleep(rand() % 3); // Random Wait Time
     }
+
+    return NULL;
 }
 
 int main() {
-    // Initialize shared memory for table
-    int fd = shm_open("/table_memory", O_CREAT | O_RDWR, 0666);
-    ftruncate(fd, sizeof(int));
-    table = mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    // Clean up
+    sem_unlink("/empty_sem");
+    sem_unlink("/full_sem");
+    sem_unlink("/mutex_sem");
+    shm_unlink("/shared_mem");
 
-    // Initialize semaphores
-    empty = sem_open("/empty_sem", O_CREAT, 0666, TABLE_SIZE);
+    // Create and initialize semaphores
+    empty = sem_open("/empty_sem", O_CREAT, 0666, BUFFER_SIZE);
     full = sem_open("/full_sem", O_CREAT, 0666, 0);
     mutex = sem_open("/mutex_sem", O_CREAT, 0666, 1);
 
-    pthread_t producer_thread;
-    pthread_create(&producer_thread, NULL, producer, NULL);
+    // Create shared memory segment
+    shm_fd = shm_open("/shared_mem", O_CREAT | O_RDWR, 0666);
+    ftruncate(shm_fd, sizeof(SharedData));
+    shared_data = (SharedData *)mmap(NULL, sizeof(SharedData), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
-    pthread_exit(NULL);
+    pthread_t producer_tid;
+
+    // Create producer thread
+    pthread_create(&producer_tid, NULL, producer_thread, NULL);
+
+    // Wait for threads to finish (you may need to handle this differently depending on your application)
+    pthread_join(producer_tid, NULL);
+
+    // Clean up
+    sem_unlink("/empty_sem");
+    sem_unlink("/full_sem");
+    sem_unlink("/mutex_sem");
+    shm_unlink("/shared_mem");
+
+    return 0;
 }
