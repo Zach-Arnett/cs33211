@@ -12,3 +12,6 @@ gcc producer.c -pthread -lrt -o producer
 gcc consumer.c -pthread -lrt -o consumer
 ./producer & ./consumer &
 ```
+
+## Documentation and Examples
+These are provided in a [separate file]()
