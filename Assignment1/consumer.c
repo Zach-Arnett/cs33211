@@ -1,54 +1,54 @@
+// Zach Arnett
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include <semaphore.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-
-#define TABLE_SIZE 2
+#include <unistd.h>
 
 sem_t *empty;
 sem_t *full;
 sem_t *mutex;
-int* table;
 
-// Consumer function
-void* consumer(void* arg) {
+int *table;
+
+void consume(int item) {
+    // Consume item
+    printf("Consuming item %d\n", item);
+    sleep(2);
+}
+
+void *consumer(void *arg) {
+    int item;
 
     while (1) {
-        sem_wait(full);  // Wait for a filled slot
-        sem_wait(mutex); // Enter critical section
+        sem_wait(full);
+        sem_wait(mutex);
 
-        // Consume item from the table
-        int item = table[0];
-        printf("Consumed item: %d\n", item);
+        item = table[*table - 1];
+        *table -= 1;
 
-        sem_post(mutex); // Exit critical section
-        sem_post(empty); // Signal that a slot is empty
+        sem_post(mutex);
+        sem_post(empty);
 
-        sleep(2);
+        consume(item);
     }
-
-    return NULL;
 }
 
 int main() {
-    // Open existing semaphores
-    empty = sem_open("/empty", O_CREAT, 0644, TABLE_SIZE);
-    full = sem_open("/full", O_CREAT, 0644, 0);
-    mutex = sem_open("/mutex", O_CREAT, 0644, 1);
+    // Initialize shared memory for table
+    int fd = shm_open("/table_memory", O_RDWR, 0666);
+    table = mmap(0, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-    // Open existing shared memory for the table
-    int shm_fd = shm_open("/table", O_RDWR, 0644);
-    table = (int*) mmap(NULL, sizeof(int) * TABLE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-
+    // Initialize semaphores
+    empty = sem_open("/empty_sem", O_RDWR);
+    full = sem_open("/full_sem", O_RDWR);
+    mutex = sem_open("/mutex_sem", O_RDWR);
 
     pthread_t consumer_thread;
-
     pthread_create(&consumer_thread, NULL, consumer, NULL);
 
-    pthread_join(consumer_thread, NULL);  // Wait for consumer thread to finish
-
-
-    return 0;
+    pthread_exit(NULL);
 }
