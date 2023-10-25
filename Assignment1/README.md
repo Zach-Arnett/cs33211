@@ -14,4 +14,4 @@ gcc consumer.c -pthread -lrt -o consumer
 ```
 
 ## Documentation and Examples
-These are provided in a [separate file]()
+These are provided in a [separate file](https://github.com/Zach-Arnett/cs33211/blob/main/Assignment1/DOCUMENTATION.md)
