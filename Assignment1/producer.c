@@ -16,12 +16,6 @@ sem_t *mutex;
 
 int *table;
 
-void produce(int item) {
-    // Produce item
-    printf("Producing item %d\n", item);
-    sleep(1);
-}
-
 void *producer(void *arg) {
     int item = 1;
 
@@ -29,14 +23,16 @@ void *producer(void *arg) {
         sem_wait(empty);
         sem_wait(mutex);
 
-        produce(item);
+        printf("Producing item %d\n", item);
         table[*table] = item;
         *table += 1;
+        
+        item++;
 
         sem_post(mutex);
         sem_post(full);
 
-        item++;
+        sleep(1);
     }
 }
 

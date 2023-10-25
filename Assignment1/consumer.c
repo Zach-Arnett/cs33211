@@ -14,12 +14,6 @@ sem_t *mutex;
 
 int *table;
 
-void consume(int item) {
-    // Consume item
-    printf("Consuming item %d\n", item);
-    sleep(2);
-}
-
 void *consumer(void *arg) {
     int item;
 
@@ -30,10 +24,12 @@ void *consumer(void *arg) {
         item = table[*table - 1];
         *table -= 1;
 
+        printf("Consuming item %d\n", item);
+
         sem_post(mutex);
         sem_post(empty);
 
-        consume(item);
+        sleep(2);
     }
 }
 
