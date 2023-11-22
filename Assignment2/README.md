@@ -6,7 +6,11 @@ An implementation of the Banker's Algorithm using C++ in a Linux environment
 banker.cpp reads from banker.txt to obtain the number of processes, number of resources, allocated resources, max resources, and available resources. The program utilizes the banker's algorithm to determine if the system is in a safe state. If so, it prints out the safe sequence.
 
 ## Usage
-
+To compile and run, use the following:
+```bash
+g++ banker.cpp -o banker
+./banker
+```
 
 ## Documentation and Examples
 
